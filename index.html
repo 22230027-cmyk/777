@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>經典貪吃蛇小遊戲</title>
+    <style>
+        body {
+            background-color: #222;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        #score-board {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            background-color: #111;
+            border: 4px solid #4CAF50;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+        }
+
+        .controls {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>貪吃蛇小遊戲</h1>
+    <div id="score-board">分數: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div class="controls">使用鍵盤的方向鍵 (↑ ↓ ← →) 來控制蛇的方向。</div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+
+        // 格子大小與數量
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        // 蛇的初始設定
+        let snake = [
+            { x: 10, y: 10 },
+        ];
+        // 初始移動方向 (向右)
+        let dx = 1;
+        let dy = 0;
+
+        // 食物位置
+        let food = { x: 5, y: 5 };
+
+        // 分數
+        let score = 0;
+
+        // 遊戲主循環速度 (毫秒，數字越小蛇跑越快)
+        let gameSpeed = 100;
+        let gameInterval;
+
+        // 啟動遊戲
+        function startGame() {
+            generateFood();
+            gameInterval = setInterval(updateGame, gameSpeed);
+        }
+
+        // 遊戲主邏輯
+        function updateGame() {
+            moveSnake();
+
+            if (checkGameOver()) {
+                clearInterval(gameInterval);
+                alert(`遊戲結束！你的總分是: ${score}`);
+                resetGame();
+                return;
+            }
+
+            checkFoodCollision();
+            draw();
+        }
+
+        // 繪製畫面
+        function draw() {
+            // 清空畫布
+            ctx.fillStyle = "#111";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 畫蛇
+            ctx.fillStyle = "#4CAF50";
+            snake.forEach((part, index) => {
+                // 讓蛇頭顏色深一點
+                if (index === 0) ctx.fillStyle = "#388E3C";
+                else ctx.fillStyle = "#4CAF50";
+                
+                ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 2, gridSize - 2);
+            });
+
+            // 畫食物
+            ctx.fillStyle = "#FF5722";
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+        }
+
+        // 移動蛇
+        function moveSnake() {
+            // 建立新的蛇頭位置
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+            // 將新蛇頭加到陣列最前面
+            snake.unshift(head);
+            // 移除蛇尾 (如果吃到食物，在後面會加回來)
+            snake.pop();
+        }
+
+        // 檢查碰撞（牆壁或自己）
+        function checkGameOver() {
+            const head = snake[0];
+
+            // 撞牆
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                return true;
+            }
+
+            // 撞到自己 (從索引 1 開始檢查，因為 0 是蛇頭)
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // 檢查是否吃到食物
+        function checkFoodCollision() {
+            const head = snake[0];
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                scoreElement.innerText = score;
+                
+                // 蛇長大：複製蛇尾並加回去
+                const tail = { ...snake[snake.length - 1] };
+                snake.push(tail);
+
+                // 重新生成食物
+                generateFood();
+            }
+        }
+
+        // 隨機生成食物位置
+        function generateFood() {
+            food.x = Math.floor(Math.random() * tileCount);
+            food.y = Math.floor(Math.random() * tileCount);
+
+            // 確保食物不會生在蛇的身體上
+            snake.forEach(part => {
+                if (part.x === food.x && part.y === food.y) {
+                    generateFood();
+                }
+            });
+        }
+
+        // 監聽鍵盤事件
+        window.addEventListener("keydown", e => {
+            switch (e.key) {
+                case "ArrowUp":
+                    if (dy === 1) break; // 防止直接倒退
+                    dx = 0; dy = -1;
+                    break;
+                case "ArrowDown":
+                    if (dy === -1) break;
+                    dx = 0; dy = 1;
+                    break;
+                case "ArrowLeft":
+                    if (dx === 1) break;
+                    dx = -1; dy = 0;
+                    break;
+                case "ArrowRight":
+                    if (dx === -1) break;
+                    dx = 1; dy = 0;
+                    break;
+            }
+        });
+
+        // 重設遊戲
+        function resetGame() {
+            snake = [{ x: 10, y: 10 }];
+            dx = 1;
+            dy = 0;
+            score = 0;
+            scoreElement.innerText = score;
+            startGame();
+        }
+
+        // 啟動
+        startGame();
+    </script>
+</body>
+</html>
